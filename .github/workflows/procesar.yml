@@ -9,24 +9,29 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Clonar repositorio
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Configurar Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.9'
+          python-version: '3.10'
 
       - name: Ejecutar script de procesamiento
         run: python procesar_gpx.py
 
-      # Este paso guardará los cambios automáticamente si el script crea un archivo nuevo
       - name: Hacer commit de los cambios
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
           git add .
-          git commit -m "Actualización automática de datos" || echo "No hay cambios para hacer commit"
-          git push
+          if git diff --staged --quiet; then
+            echo "No hay cambios para hacer commit"
+          else
+            git commit -m "Actualización automática de datos"
+            git push
+          fi
