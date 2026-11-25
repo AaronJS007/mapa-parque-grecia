@@ -7,7 +7,6 @@ def procesar():
     print("Iniciando procesamiento de trazas GPX...")
     features = []
     
-    # Verificar si existe la carpeta de trazas
     if os.path.exists('trazas'):
         for filename in os.listdir('trazas'):
             if filename.endswith('.gpx'):
@@ -18,21 +17,17 @@ def procesar():
                         
                         # 1. Extraer puntos de interés (waypoints)
                         for waypoint in gpx.waypoints:
-                            # Manejo de la fecha (fallback al 2024 si no hay fecha)
                             time_str = waypoint.time.isoformat() if waypoint.time else "2024-01-01T00:00:00"
                             
-                            # Manejo de la foto: waypoint.link es un string directo
+                            # Extraer la foto: waypoint.link YA ES EL TEXTO del enlace
                             foto_url = ""
                             if waypoint.link:
-                                # Extrae solo el nombre del archivo al final de la ruta
+                                # .split('/')[-1] asegura que si viene una ruta larga, solo tome el nombre final (.jpg)
                                 foto_url = str(waypoint.link).split('/')[-1]
                                 
                             features.append({
                                 "type": "Feature",
-                                "geometry": {
-                                    "type": "Point", 
-                                    "coordinates": [waypoint.longitude, waypoint.latitude]
-                                },
+                                "geometry": {"type": "Point", "coordinates": [waypoint.longitude, waypoint.latitude]},
                                 "properties": {
                                     "name": waypoint.name or "Punto sin nombre", 
                                     "desc": waypoint.description or "", 
@@ -45,10 +40,7 @@ def procesar():
                         # 2. Extraer trazas (recorridos)
                         for track in gpx.tracks:
                             for segment in track.segments:
-                                # Extraer coordenadas
                                 coords = [[point.longitude, point.latitude] for point in segment.points]
-                                
-                                # Extraer la fecha del primer punto de la traza
                                 first_point = segment.points[0] if segment.points else None
                                 time_str = first_point.time.isoformat() if first_point and first_point.time else "2024-01-01T00:00:00"
                                 
@@ -56,16 +48,11 @@ def procesar():
                                     features.append({
                                         "type": "Feature",
                                         "geometry": {"type": "LineString", "coordinates": coords},
-                                        "properties": {
-                                            "name": track.name or "Traza sin nombre", 
-                                            "type": "traza", 
-                                            "time": time_str
-                                        }
+                                        "properties": {"name": track.name or "Traza sin nombre", "type": "traza", "time": time_str}
                                     })
                 except Exception as e:
                     print(f"Error procesando el archivo {filename}: {e}")
 
-    # Guardar el archivo GeoJSON final
     geojson = {"type": "FeatureCollection", "features": features}
     with open('datos.geojson', 'w', encoding='utf-8') as f:
         json.dump(geojson, f, ensure_ascii=False, indent=2)
