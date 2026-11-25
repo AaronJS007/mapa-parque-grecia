@@ -14,17 +14,25 @@
     <div id="map"></div>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Coordenadas aproximadas del Parque Central de Grecia, Alajuela
         var map = L.map('map').setView([10.0736, -84.3139], 16);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Aquí luego cargaremos el archivo GeoJSON con los datos
-        // fetch('datos.geojson').then(response => response.json()).then(data => {
-        //     L.geoJSON(data).addTo(map);
-        // });
+        // Cargar el GeoJSON generado por Python
+        fetch('datos.geojson')
+            .then(response => response.json())
+            .then(data => {
+                L.geoJSON(data, {
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties && feature.properties.name) {
+                            layer.bindPopup(feature.properties.name);
+                        }
+                    }
+                }).addTo(map);
+            })
+            .catch(error => console.log("Aún no hay datos.geojson generado", error));
     </script>
 </body>
 </html>
