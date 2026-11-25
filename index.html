@@ -4,35 +4,155 @@
     <title>Mapa Temático - Parque de Grecia</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- CSS de Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- CSS de MarkerCluster (Agrupación) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    
     <style>
         body { margin: 0; padding: 0; }
         #map { height: 100vh; width: 100vw; }
+        
+        /* Estilos del panel de control */
+        .control-panel {
+            position: absolute; top: 10px; right: 10px; z-index: 1000;
+            background: white; padding: 15px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            font-family: sans-serif; font-size: 14px;
+        }
+        .control-panel h4 { margin: 0 0 10px 0; }
+        .control-panel button { 
+            padding: 8px; width: 100%; cursor: pointer; 
+            background-color: #007bff; color: white; border: none; border-radius: 4px;
+            font-weight: bold;
+        }
+        .control-panel button:hover { background-color: #0056b3; }
     </style>
 </head>
 <body>
-    <div id="map"></div>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        var map = L.map('map').setView([10.0736, -84.3139], 16);
 
+    <!-- Contenedor del mapa -->
+    <div id="map"></div>
+    
+    <!-- Panel de control flotante -->
+    <div class="control-panel">
+        <h4>Visualizaciones</h4>
+        <label><input type="radio" name="view" value="cluster" checked> Agrupar puntos (Cluster)</label><br>
+        <label><input type="radio" name="view" value="heat"> Mapa de Calor</label>
+        
+        <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ccc;">
+        
+        <h4>Filtro Temporal</h4>
+        <button id="btn-filtro">Ocultar trazas anteriores a Noviembre 2026</button>
+    </div>
+
+    <!-- Librerías de JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+    <!-- Lógica del Mapa -->
+    <script>
+        // 1. Inicializar el mapa centrado en Grecia
+        var map = L.map('map').setView([10.0736, -84.3139], 16);
+        
+        // Capa base de OpenStreetMap
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Cargar el GeoJSON generado por Python
+        // Variables globales
+        var clusterGroup = L.markerClusterGroup();
+        var heatLayer = null;
+        var geojsonData = null;
+        var isFiltered = false; // Estado del filtro
+        var mapLayers = L.featureGroup().addTo(map); // Capa para las líneas (trazas)
+
+        // 2. Definir la fecha límite del filtro (1 de Noviembre de 2026)
+        var fechaLimite = new Date("2026-11-01T00:00:00");
+
+        // 3. Cargar los datos del archivo GeoJSON generado por Python
         fetch('datos.geojson')
             .then(response => response.json())
             .then(data => {
-                L.geoJSON(data, {
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties && feature.properties.name) {
-                            layer.bindPopup(feature.properties.name);
-                        }
-                    }
-                }).addTo(map);
+                geojsonData = data;
+                actualizarMapa();
             })
-            .catch(error => console.log("Aún no hay datos.geojson generado", error));
+            .catch(error => console.log("Aún no se ha generado el archivo datos.geojson", error));
+
+        // 4. Función principal que dibuja en el mapa
+        function actualizarMapa() {
+            // Limpiar capas anteriores
+            mapLayers.clearLayers();
+            if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+            clusterGroup.clearLayers();
+
+            var modoVista = document.querySelector('input[name="view"]:checked').value;
+            var heatPoints = [];
+
+            // Recorrer cada elemento del GeoJSON
+            geojsonData.features.forEach(feature => {
+                
+                // --- LÓGICA DEL FILTRO TEMPORAL ---
+                if (isFiltered && feature.properties.time) {
+                    var featureDate = new Date(feature.properties.time);
+                    // Si la fecha del elemento es menor a la límite, se ignora (no se dibuja)
+                    if (featureDate < fechaLimite) {
+                        return; 
+                    }
+                }
+
+                // Si es un Punto (POI)
+                if (feature.geometry.type === 'Point') {
+                    var latlng = [feature.geometry.coordinates[1], feature.geometry.coordinates[0]];
+                    var marker = L.marker(latlng);
+                    
+                    // Popup con el nombre
+                    if (feature.properties.name) {
+                        marker.bindPopup(`<b>${feature.properties.name}</b>`);
+                    }
+                    
+                    clusterGroup.addLayer(marker); // Agregar al cluster
+                    heatPoints.push([latlng[0], latlng[1], 1.0]); // Agregar al mapa de calor
+                
+                // Si es una Línea (Traza)
+                } else if (feature.geometry.type === 'LineString') {
+                    var latlngs = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
+                    var polyline = L.polyline(latlngs, {color: 'blue', weight: 4});
+                    
+                    mapLayers.addLayer(polyline); // Agregar al mapa siempre visible
+                    
+                    // Agregar puntos de la línea al mapa de calor
+                    latlngs.forEach(ll => heatPoints.push([ll[0], ll[1], 0.5]));
+                }
+            });
+
+            // Aplicar la visualización seleccionada (Cluster o Calor)
+            if (modoVista === 'cluster') {
+                map.addLayer(clusterGroup);
+            } else if (modoVista === 'heat') {
+                map.removeLayer(clusterGroup);
+                heatLayer = L.heatLayer(heatPoints, {radius: 25, blur: 15, maxZoom: 17}).addTo(map);
+            }
+        }
+
+        // 5. Eventos de los botones y controles
+        // Escuchar cambios en los botones de radio (Cluster / Calor)
+        document.querySelectorAll('input[name="view"]').forEach(radio => {
+            radio.addEventListener('change', actualizarMapa);
+        });
+
+        // Escuchar el clic del botón de Filtro Temporal
+        document.getElementById('btn-filtro').addEventListener('click', function() {
+            isFiltered = !isFiltered; // Cambiar estado (true/false)
+            
+            // Cambiar el texto del botón
+            this.innerText = isFiltered ? "Mostrar todas las trazas" : "Ocultar trazas anteriores a Noviembre 2026";
+            
+            // Redibujar el mapa
+            actualizarMapa(); 
+        });
     </script>
 </body>
 </html>
