@@ -36,4 +36,4 @@ Como el repositorio es público y seguro, solo el administrador del proyecto tie
 *   **Opción A (Directa):** Si eres colaborador autorizado del repositorio, en OSMTracker mantén presionada la traza y selecciona **"Subir a GitHub"** (deberás configurar tu usuario y un token de seguridad en los ajustes).
 *   **Opción B (Para cualquier voluntario):** En OSMTracker, selecciona la opción **Exportar** o **Compartir**. Envía el archivo `.zip` generado al administrador del proyecto (por WhatsApp o correo). El administrador lo subirá a la nube.
 
-*(¡No te preocupes por el formato! Nuestro sistema automático en GitHub Actions se encargará de descomprimir el archivo, ordenar las fotos, limpiar los archivos temporales y actualizar el mapa por ti).*
+*(No te preocupes por el formato Nuestro sistema se encargará de descomprimir el archivo, ordenar las fotos, limpiar los archivos temporales y actualizar el mapa por ti).*
