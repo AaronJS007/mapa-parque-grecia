@@ -5,9 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- CSS de Leaflet -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- CSS de MarkerCluster (Agrupación) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     
@@ -15,7 +13,6 @@
         body { margin: 0; padding: 0; }
         #map { height: 100vh; width: 100vw; }
         
-        /* Panel de control */
         .control-panel {
             position: absolute; top: 10px; right: 10px; z-index: 1000;
             background: white; padding: 15px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3);
@@ -29,7 +26,6 @@
         }
         .control-panel button:hover { background-color: #0056b3; }
 
-        /* Leyenda */
         .legend {
             background: white; padding: 10px 15px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.3);
             font-family: sans-serif; font-size: 13px; line-height: 1.5;
@@ -39,7 +35,6 @@
         .legend-color { width: 20px; height: 20px; margin-right: 10px; border-radius: 50%; display: inline-block; }
         .legend-line { width: 20px; height: 4px; margin-right: 10px; background-color: blue; display: inline-block; }
 
-        /* Popups */
         .leaflet-popup-content-wrapper { border-radius: 8px; padding: 0; overflow: hidden; }
         .leaflet-popup-content { margin: 0; width: 220px !important; }
         .popup-text { padding: 10px 12px 5px 12px; font-family: sans-serif; font-size: 14px; line-height: 1.3; }
@@ -64,7 +59,6 @@
     <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
 
     <script>
-        // Mapa con zoom inicial en 17
         var map = L.map('map', { maxZoom: 21 }).setView([10.0736, -84.3139], 17);
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -79,7 +73,6 @@
         var mapLayers = L.featureGroup().addTo(map); 
         var fechaLimite = new Date("2026-11-01T00:00:00");
 
-        // Leyenda
         var legend = L.control({position: 'bottomright'});
         legend.onAdd = function (map) {
             var div = L.DomUtil.create('div', 'legend');
@@ -102,6 +95,7 @@
             .catch(error => console.log("Error cargando datos.geojson", error));
 
         function actualizarMapa() {
+            // Limpiar capas
             mapLayers.clearLayers();
             if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
             clusterGroup.clearLayers();
@@ -123,7 +117,6 @@
                     if (feature.properties.name) popupContent += `<b>${feature.properties.name}</b><br>`;
                     if (feature.properties.desc) popupContent += `<span style="font-size: 12px; color: #555;">${feature.properties.desc}</span>`;
                     popupContent += "</div>";
-                    
                     if (feature.properties.foto && feature.properties.foto !== "") {
                         popupContent += `<img src="fotos/${feature.properties.foto}" class="popup-img" alt="Foto">`;
                     }
@@ -136,23 +129,23 @@
                     var latlngs = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
                     var polyline = L.polyline(latlngs, {color: 'blue', weight: 4});
                     mapLayers.addLayer(polyline);
-                    
-                    // Le damos un poco más de intensidad (0.7) a las trazas para que se note el calor
                     latlngs.forEach(ll => heatPoints.push([ll[0], ll[1], 0.7]));
                 }
             });
 
+            // --- LÓGICA DE VISUALIZACIÓN CORREGIDA ---
             if (modoVista === 'cluster') {
-                map.addLayer(clusterGroup);
+                map.addLayer(mapLayers); // Mostrar las líneas azules
+                map.addLayer(clusterGroup); // Mostrar los puntos agrupados
             } else if (modoVista === 'heat') {
-                map.removeLayer(clusterGroup);
+                map.removeLayer(clusterGroup); // Ocultar puntos
+                map.removeLayer(mapLayers);    // Ocultar líneas azules para que no hagan "ruido"
                 
-                // CONFIGURACIÓN CORREGIDA DEL MAPA DE CALOR
                 heatLayer = L.heatLayer(heatPoints, {
-                    radius: 30,       // Tamaño de las manchas
-                    blur: 15,         // Desenfoque
-                    maxZoom: 17,      // ¡CLAVE! Igual al zoom de inicio para que no se encoja
-                    minOpacity: 0.4   // Opacidad mínima para que siempre se vea algo de color
+                    radius: 35,       
+                    blur: 20,         
+                    maxZoom: 17,      
+                    minOpacity: 0.5   
                 }).addTo(map);
             }
         }
