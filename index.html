@@ -86,11 +86,13 @@
 
     <!-- Lógica del Mapa -->
     <script>
-        // 1. Inicializar el mapa (CAMBIO: Zoom de 16 a 15 para ver más contexto)
-        var map = L.map('map').setView([10.0736, -84.3139], 15);
+        // 1. Inicializar el mapa (maxZoom: 21 permite acercarse mucho más)
+        var map = L.map('map', { maxZoom: 21 }).setView([10.0736, -84.3139], 17);
         
-        // Capa base de OpenStreetMap
+        // Capa base de OpenStreetMap (Ajustamos el maxZoom y maxNativeZoom)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 21,          // Permite hacer zoom hasta el nivel 21
+            maxNativeZoom: 19,    // Los mapas de OSM llegan al nivel 19, del 20 en adelante se "estiran" los pixeles
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
@@ -180,7 +182,7 @@
                 map.addLayer(clusterGroup);
             } else if (modoVista === 'heat') {
                 map.removeLayer(clusterGroup);
-                heatLayer = L.heatLayer(heatPoints, {radius: 40, blur: 25, maxZoom: 17}).addTo(map);
+                heatLayer = L.heatLayer(heatPoints, {radius: 40, blur: 25, maxZoom: 21}).addTo(map);
             }
         }
 
