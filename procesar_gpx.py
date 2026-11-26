@@ -2,8 +2,50 @@ import os
 import json
 import gpxpy
 import gpxpy.gpx
+import zipfile
+import shutil
 
-def procesar():
+def extraer_y_ordenar_zips():
+    print("Buscando archivos ZIP de OSMTracker...")
+    
+    # Crear carpetas si no existen
+    if not os.path.exists('trazas'): os.makedirs('trazas')
+    if not os.path.exists('fotos'): os.makedirs('fotos')
+
+    for filename in os.listdir('.'):
+        if filename.endswith('.zip'):
+            print(f"Extrayendo: {filename}")
+            temp_dir = "temp_extract"
+            
+            try:
+                with zipfile.ZipFile(filename, 'r') as zip_ref:
+                    zip_ref.extractall(temp_dir)
+                
+                # Recorrer los archivos extraídos
+                for root, dirs, files in os.walk(temp_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        
+                        # Si es GPX, va a trazas/
+                        if file.endswith('.gpx'):
+                            shutil.move(file_path, os.path.join('trazas', file))
+                            print(f"  -> Movido a trazas/: {file}")
+                            
+                        # Si es imagen o audio, va a fotos/
+                        elif file.lower().endswith(('.jpg', '.jpeg', '.png', '.3gp', '.m4a', '.mp3')):
+                            shutil.move(file_path, os.path.join('fotos', file))
+                            print(f"  -> Movido a fotos/: {file}")
+                            
+            except Exception as e:
+                print(f"Error extrayendo {filename}: {e}")
+            finally:
+                # Limpiar carpeta temporal y borrar el ZIP original
+                if os.path.exists(temp_dir):
+                    shutil.rmtree(temp_dir)
+                os.remove(filename)
+                print(f"  -> Archivo {filename} procesado y eliminado.")
+
+def procesar_gpx():
     print("Iniciando procesamiento de trazas GPX...")
     features = []
     
@@ -15,14 +57,11 @@ def procesar():
                     with open(f'trazas/{filename}', 'r', encoding='utf-8') as gpx_file:
                         gpx = gpxpy.parse(gpx_file)
                         
-                        # 1. Extraer puntos de interés (waypoints)
                         for waypoint in gpx.waypoints:
                             time_str = waypoint.time.isoformat() if waypoint.time else "2024-01-01T00:00:00"
                             
-                            # Extraer la foto: waypoint.link YA ES EL TEXTO del enlace
                             foto_url = ""
                             if waypoint.link:
-                                # .split('/')[-1] asegura que si viene una ruta larga, solo tome el nombre final (.jpg)
                                 foto_url = str(waypoint.link).split('/')[-1]
                                 
                             features.append({
@@ -37,7 +76,6 @@ def procesar():
                                 }
                             })
                         
-                        # 2. Extraer trazas (recorridos)
                         for track in gpx.tracks:
                             for segment in track.segments:
                                 coords = [[point.longitude, point.latitude] for point in segment.points]
@@ -60,4 +98,5 @@ def procesar():
     print(f"¡Proceso terminado! Se guardaron {len(features)} elementos en datos.geojson")
 
 if __name__ == "__main__":
-    procesar()
+    extraer_y_ordenar_zips() # Primero descomprime y ordena
+    procesar_gpx()           # Luego procesa los GPX
