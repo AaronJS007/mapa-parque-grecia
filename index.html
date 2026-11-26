@@ -95,7 +95,6 @@
             .catch(error => console.log("Error cargando datos.geojson", error));
 
         function actualizarMapa() {
-            // Limpiar capas
             mapLayers.clearLayers();
             if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
             clusterGroup.clearLayers();
@@ -125,27 +124,32 @@
                     clusterGroup.addLayer(marker);
                     heatPoints.push([latlng[0], latlng[1], 1.0]); 
                     
-                } else if (feature.geometry.type === 'LineString') {
-                    var latlngs = feature.geometry.coordinates.map(coord => [coord[1], coord[0]]);
-                    var polyline = L.polyline(latlngs, {color: 'blue', weight: 4});
-                    mapLayers.addLayer(polyline);
-                    latlngs.forEach(ll => heatPoints.push([ll[0], ll[1], 0.7]));
+                } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
+                    var lineas = feature.geometry.type === 'LineString'
+                        ? [feature.geometry.coordinates]
+                        : feature.geometry.coordinates;
+
+                    lineas.forEach(linea => {
+                        var latlngs = linea.map(coord => [coord[1], coord[0]]);
+                        mapLayers.addLayer(L.polyline(latlngs, {color: 'blue', weight: 4}));
+                        latlngs.forEach(ll => heatPoints.push([ll[0], ll[1], 0.7]));
+                    });
                 }
             });
 
-            // --- LÓGICA DE VISUALIZACIÓN CORREGIDA ---
             if (modoVista === 'cluster') {
-                map.addLayer(mapLayers); // Mostrar las líneas azules
-                map.addLayer(clusterGroup); // Mostrar los puntos agrupados
+                map.addLayer(mapLayers); 
+                map.addLayer(clusterGroup); 
             } else if (modoVista === 'heat') {
-                map.removeLayer(clusterGroup); // Ocultar puntos
-                map.removeLayer(mapLayers);    // Ocultar líneas azules para que no hagan "ruido"
+                map.removeLayer(clusterGroup); 
+                map.removeLayer(mapLayers);    
                 
                 heatLayer = L.heatLayer(heatPoints, {
-                    radius: 35,       
-                    blur: 20,         
-                    maxZoom: 17,      
-                    minOpacity: 0.5   
+                    radius: 18,
+                    blur: 15,
+                    maxZoom: 17,
+                    max: 5,          
+                    minOpacity: 0.2
                 }).addTo(map);
             }
         }
