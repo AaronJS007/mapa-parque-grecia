@@ -142,7 +142,7 @@
                 map.addLayer(clusterGroup); 
             } else if (modoVista === 'heat') {
                 map.removeLayer(clusterGroup); 
-                map.removeLayer(mapLayers);    
+                mapLayers.bringToFront();    
                 
                 heatLayer = L.heatLayer(heatPoints, {
                     radius: 18,
