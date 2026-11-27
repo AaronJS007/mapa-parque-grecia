@@ -90,7 +90,7 @@
         };
         legend.addTo(map);
 
-        fetch('datos.geojson')
+        fetch('datos.geojson?v=' + new Date().getTime())
             .then(response => response.json())
             .then(data => {
                 geojsonData = data;
